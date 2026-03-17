@@ -180,7 +180,10 @@ def do_fetch(binary: Path, cfg: dict) -> dict:
 def do_convert_grafana(binary: Path, gap_data: dict, cfg: dict) -> list[dict]:
     resp = run_gap(binary, "convert-grafana", {
         "gap_data":                gap_data,
-        "hyperdx_metric_source_id": cfg["metric_source_id"],
+        "hyperdx_metric_source_id": cfg.get("metric_source_id", ""),
+        # Passed so the binary can auto-discover metric_source_id when it's empty
+        "hyperdx_url":             cfg.get("hyperdx_url", ""),
+        "hyperdx_api_key":         cfg.get("hyperdx_api_key", ""),
     })
     ok(f"Converted {resp['dashboard_count']} dashboard(s) to HyperDX format")
     return resp["dashboards"]
@@ -201,8 +204,11 @@ def do_apply_grafana(binary: Path, dashboards: list[dict], cfg: dict, dry_run: b
 def do_convert_alerts(binary: Path, gap_data: dict, cfg: dict) -> list[dict]:
     resp = run_gap(binary, "convert-alerts", {
         "gap_data":                gap_data,
-        "hyperdx_metric_source_id": cfg["metric_source_id"],
+        "hyperdx_metric_source_id": cfg.get("metric_source_id", ""),
         "webhook_id":              cfg.get("webhook_id", ""),
+        # Passed so the binary can auto-discover IDs when they're empty
+        "hyperdx_url":             cfg.get("hyperdx_url", ""),
+        "hyperdx_api_key":         cfg.get("hyperdx_api_key", ""),
     })
     ok(f"Converted {resp['alert_count']} alert rule(s) to HyperDX format")
     return resp["alert_pairs"]
@@ -436,21 +442,19 @@ def main():
     # ── Grafana dashboards ────────────────────────────────────────────────
     if do_grafana:
         n += 1; step(n, total, "Converting Grafana dashboards")
-        require(cfg, ["metric_source_id"])
+        require(cfg, ["hyperdx_url", "hyperdx_api_key"])
         dashboards = do_convert_grafana(binary, gap_data, cfg)
 
         n += 1; step(n, total, "Applying Grafana dashboards" + (" (dry run)" if dry_run else ""))
-        require(cfg, ["hyperdx_url", "hyperdx_api_key"])
         do_apply_grafana(binary, dashboards, cfg, dry_run)
 
     # ── Alert rules ───────────────────────────────────────────────────────
     if do_alerts:
         n += 1; step(n, total, "Converting Prometheus alert rules")
-        require(cfg, ["metric_source_id"])
+        require(cfg, ["hyperdx_url", "hyperdx_api_key"])
         alert_pairs = do_convert_alerts(binary, gap_data, cfg)
 
         n += 1; step(n, total, "Applying alert rules" + (" (dry run)" if dry_run else ""))
-        require(cfg, ["hyperdx_url", "hyperdx_api_key"])
         do_apply_alerts(binary, alert_pairs, cfg, dry_run)
 
     # ── Historical backfill ───────────────────────────────────────────────
