@@ -63,6 +63,17 @@ func runConvertGrafana(input []byte) (map[string]any, int) {
 	if err := json.Unmarshal(input, &req); err != nil {
 		return map[string]any{"status": false, "message": err.Error(), "dashboards": []any{}}, 1
 	}
+
+	sourceID, err := resolveIDWithCredentials(
+		req.HyperDXURL, req.HyperDXAPIKey,
+		req.HyperDXMetricSourceID,
+		func(c *hyperDXClient, id string) (string, error) { return resolveMetricSourceID(c, id) },
+	)
+	if err != nil {
+		return map[string]any{"status": false, "message": err.Error(), "dashboards": []any{}}, 1
+	}
+	req.HyperDXMetricSourceID = sourceID
+
 	return convertGrafanaPayload(req), 0
 }
 
@@ -83,6 +94,27 @@ func runConvertAlerts(input []byte) (map[string]any, int) {
 	if err := json.Unmarshal(input, &req); err != nil {
 		return map[string]any{"status": false, "message": err.Error(), "alert_pairs": []any{}}, 1
 	}
+
+	sourceID, err := resolveIDWithCredentials(
+		req.HyperDXURL, req.HyperDXAPIKey,
+		req.HyperDXMetricSourceID,
+		func(c *hyperDXClient, id string) (string, error) { return resolveMetricSourceID(c, id) },
+	)
+	if err != nil {
+		return map[string]any{"status": false, "message": err.Error(), "alert_pairs": []any{}}, 1
+	}
+	req.HyperDXMetricSourceID = sourceID
+
+	webhookID, err := resolveIDWithCredentials(
+		req.HyperDXURL, req.HyperDXAPIKey,
+		req.WebhookID,
+		func(c *hyperDXClient, id string) (string, error) { return resolveWebhookID(c, id) },
+	)
+	if err != nil {
+		return map[string]any{"status": false, "message": err.Error(), "alert_pairs": []any{}}, 1
+	}
+	req.WebhookID = webhookID
+
 	return convertAlertsPayload(req), 0
 }
 

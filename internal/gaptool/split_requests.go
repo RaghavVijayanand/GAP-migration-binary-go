@@ -2,7 +2,10 @@ package gaptool
 
 type convertGrafanaRequest struct {
 	GapData               map[string]any `json:"gap_data"`
-	HyperDXMetricSourceID string         `json:"hyperdx_metric_source_id"`
+	HyperDXMetricSourceID string         `json:"hyperdx_metric_source_id"` // optional — auto-discovered when empty
+	// Credentials are only needed when hyperdx_metric_source_id is omitted; used for auto-discovery.
+	HyperDXURL    string `json:"hyperdx_url"`
+	HyperDXAPIKey string `json:"hyperdx_api_key"`
 }
 
 type applyGrafanaRequest struct {
@@ -14,9 +17,13 @@ type applyGrafanaRequest struct {
 
 type convertAlertsRequest struct {
 	GapData               map[string]any `json:"gap_data"`
-	HyperDXMetricSourceID string         `json:"hyperdx_metric_source_id"`
-	WebhookID             string         `json:"webhook_id"`
+	HyperDXMetricSourceID string         `json:"hyperdx_metric_source_id"` // optional — auto-discovered when empty
+	WebhookID             string         `json:"webhook_id"`               // optional — auto-discovered when empty
+	// Credentials are only needed when IDs are omitted; used for auto-discovery.
+	HyperDXURL    string `json:"hyperdx_url"`
+	HyperDXAPIKey string `json:"hyperdx_api_key"`
 }
+
 
 type applyAlertsRequest struct {
 	HyperDXURL    string      `json:"hyperdx_url"`

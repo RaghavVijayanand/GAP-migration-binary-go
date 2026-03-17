@@ -124,3 +124,19 @@ func (c *hyperDXClient) createAlert(payload map[string]any) (map[string]any, err
 	}
 	return asMap(decoded), nil
 }
+
+func (c *hyperDXClient) listSources() ([]map[string]any, error) {
+	decoded, err := c.requestJSON(http.MethodGet, "/sources", nil)
+	if err != nil {
+		return nil, err
+	}
+	return listItems(decoded), nil
+}
+
+func (c *hyperDXClient) listWebhooks() ([]map[string]any, error) {
+	decoded, err := c.requestJSON(http.MethodGet, "/webhooks", nil)
+	if err != nil {
+		return nil, err
+	}
+	return listItems(decoded), nil
+}
