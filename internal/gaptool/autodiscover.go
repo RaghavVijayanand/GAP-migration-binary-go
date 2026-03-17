@@ -1,6 +1,9 @@
 package gaptool
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 // resolveIDWithCredentials is a convenience wrapper used by the CLI handlers.
 // It skips auto-discovery entirely when id is already non-empty or when no
@@ -55,11 +58,11 @@ func resolveMetricSourceID(client *hyperDXClient, id string) (string, error) {
 	}
 
 	if len(sources) > 1 {
-		fmt.Printf("[gap] WARNING: %d metric sources found in HyperDX; "+
+		fmt.Fprintf(os.Stderr, "[gap] WARNING: %d metric sources found in HyperDX; "+
 			"using %q — supply hyperdx_metric_source_id explicitly to choose a different one\n",
 			len(sources), resolved)
 	} else {
-		fmt.Printf("[gap] auto-discovered metric source ID: %q\n", resolved)
+		fmt.Fprintf(os.Stderr, "[gap] auto-discovered metric source ID: %q\n", resolved)
 	}
 
 	return resolved, nil
@@ -78,30 +81,30 @@ func resolveWebhookID(client *hyperDXClient, id string) (string, error) {
 	webhooks, err := client.listWebhooks()
 	if err != nil {
 		// Best-effort: log and continue without a webhook ID.
-		fmt.Printf("[gap] WARNING: auto-discovery of webhook ID failed (%v); "+
+		fmt.Fprintf(os.Stderr, "[gap] WARNING: auto-discovery of webhook ID failed (%v); "+
 			"alerts will be created without a notification channel\n", err)
 		return "", nil
 	}
 
 	if len(webhooks) == 0 {
-		fmt.Println("[gap] no webhooks found in HyperDX; " +
+		fmt.Fprintln(os.Stderr, "[gap] no webhooks found in HyperDX; "+
 			"alerts will be created without a notification channel")
 		return "", nil
 	}
 
 	resolved := firstString(webhooks[0]["_id"], webhooks[0]["id"])
 	if resolved == "" {
-		fmt.Println("[gap] WARNING: first HyperDX webhook has no id field; " +
+		fmt.Fprintln(os.Stderr, "[gap] WARNING: first HyperDX webhook has no id field; "+
 			"alerts will be created without a notification channel")
 		return "", nil
 	}
 
 	if len(webhooks) > 1 {
-		fmt.Printf("[gap] WARNING: %d webhooks found in HyperDX; "+
+		fmt.Fprintf(os.Stderr, "[gap] WARNING: %d webhooks found in HyperDX; "+
 			"using %q — supply webhook_id explicitly to choose a different one\n",
 			len(webhooks), resolved)
 	} else {
-		fmt.Printf("[gap] auto-discovered webhook ID: %q\n", resolved)
+		fmt.Fprintf(os.Stderr, "[gap] auto-discovered webhook ID: %q\n", resolved)
 	}
 
 	return resolved, nil
