@@ -29,7 +29,6 @@ func resolveIDWithCredentials(
 	return resolve(client, id)
 }
 
-
 // resolveMetricSourceID returns id unchanged when it is non-empty.
 // Otherwise it queries the HyperDX API for available sources and returns the
 // first one it finds. A warning is printed to stderr when multiple sources
@@ -57,12 +56,18 @@ func resolveMetricSourceID(client *hyperDXClient, id string) (string, error) {
 			"supply hyperdx_metric_source_id explicitly")
 	}
 
+	name := firstString(sources[0]["name"])
+	nameDisplay := ""
+	if name != "" {
+		nameDisplay = fmt.Sprintf(" (%s)", name)
+	}
+
 	if len(sources) > 1 {
 		fmt.Fprintf(os.Stderr, "[gap] WARNING: %d metric sources found in HyperDX; "+
-			"using %q — supply hyperdx_metric_source_id explicitly to choose a different one\n",
-			len(sources), resolved)
+			"using %q%s — supply hyperdx_metric_source_id explicitly to choose a different one\n",
+			len(sources), resolved, nameDisplay)
 	} else {
-		fmt.Fprintf(os.Stderr, "[gap] auto-discovered metric source ID: %q\n", resolved)
+		fmt.Fprintf(os.Stderr, "[gap] auto-discovered metric source ID: %q%s\n", resolved, nameDisplay)
 	}
 
 	return resolved, nil
@@ -99,12 +104,18 @@ func resolveWebhookID(client *hyperDXClient, id string) (string, error) {
 		return "", nil
 	}
 
+	name := firstString(webhooks[0]["name"])
+	nameDisplay := ""
+	if name != "" {
+		nameDisplay = fmt.Sprintf(" (%s)", name)
+	}
+
 	if len(webhooks) > 1 {
 		fmt.Fprintf(os.Stderr, "[gap] WARNING: %d webhooks found in HyperDX; "+
-			"using %q — supply webhook_id explicitly to choose a different one\n",
-			len(webhooks), resolved)
+			"using %q%s — supply webhook_id explicitly to choose a different one\n",
+			len(webhooks), resolved, nameDisplay)
 	} else {
-		fmt.Fprintf(os.Stderr, "[gap] auto-discovered webhook ID: %q\n", resolved)
+		fmt.Fprintf(os.Stderr, "[gap] auto-discovered webhook ID: %q%s\n", resolved, nameDisplay)
 	}
 
 	return resolved, nil

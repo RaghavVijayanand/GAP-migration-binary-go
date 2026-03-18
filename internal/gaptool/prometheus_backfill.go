@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -396,22 +397,42 @@ func (c *prometheusHistoryClient) queryRangeChunked(query string, start, end flo
 
 	chunkDuration := float64(maxPointsPerChunk * step)
 	merged := map[string]prometheusMatrixResult{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Bounded concurrency limiting to 5 parallel requests
+	semaphore := make(chan struct{}, 5)
+
 	for chunkStart := start; chunkStart < end; chunkStart += chunkDuration {
 		chunkEnd := math.Min(chunkStart+chunkDuration, end)
-		results, err := c.queryRange(query, chunkStart, chunkEnd, step)
-		if err != nil {
-			continue
-		}
-		for _, result := range results {
-			key := seriesKey(result.Metric)
-			existing := merged[key]
-			if existing.Metric == nil {
-				existing.Metric = cloneStringMap(result.Metric)
+
+		wg.Add(1)
+		semaphore <- struct{}{} // Acquire semaphore
+
+		go func(start, end float64) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Release semaphore
+
+			results, err := c.queryRange(query, start, end, step)
+			if err != nil {
+				return
 			}
-			existing.Values = append(existing.Values, result.Values...)
-			merged[key] = existing
-		}
+
+			mu.Lock()
+			defer mu.Unlock()
+			for _, result := range results {
+				key := seriesKey(result.Metric)
+				existing := merged[key]
+				if existing.Metric == nil {
+					existing.Metric = cloneStringMap(result.Metric)
+				}
+				existing.Values = append(existing.Values, result.Values...)
+				merged[key] = existing
+			}
+		}(chunkStart, chunkEnd)
 	}
+
+	wg.Wait()
 
 	final := make([]prometheusMatrixResult, 0, len(merged))
 	for _, result := range merged {
@@ -900,13 +921,17 @@ func cloneStringMap(source map[string]string) map[string]string {
 }
 
 func newClickHouseWriter(req backfillPrometheusRequest) *clickHouseWriter {
+	batchSize := req.BatchSize
+	if batchSize <= 0 {
+		batchSize = defaultBatchSize
+	}
 	return &clickHouseWriter{
 		host:        req.ClickHouseHost,
 		port:        req.ClickHousePort,
-		database:    req.ClickHouseDatabase,
-		username:    req.ClickHouseUsername,
+		database:    firstString(req.ClickHouseDatabase, defaultClickHouseDatabase),
+		username:    firstString(req.ClickHouseUsername, defaultClickHouseUsername),
 		password:    req.ClickHousePassword,
-		batchSize:   req.BatchSize,
+		batchSize:   batchSize,
 		dryRun:      req.DryRun,
 		client:      &http.Client{Timeout: 30 * time.Second, Transport: newHTTPClient().Transport},
 		columnCache: map[string][]string{},

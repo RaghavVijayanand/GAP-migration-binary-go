@@ -158,25 +158,30 @@ func buildAlertPair(alertName, expr, forDuration string, labels, annotations map
 		message = summary + "\n\n" + description
 	}
 
+	alert := map[string]any{
+		"_alert_name":   alertName,
+		"name":          alertName,
+		"message":       truncateString(message, 2000),
+		"threshold":     *threshold,
+		"thresholdType": thresholdType,
+		"interval":      nearestHDXInterval(forDuration),
+		"source":        "tile",
+	}
+
+	if webhookID != "" {
+		alert["channel"] = map[string]any{
+			"type":      "webhook",
+			"webhookId": webhookID,
+		}
+	}
+
 	return alertPair{
 		Dashboard: map[string]any{
 			"name":  "[Alert] " + alertName,
 			"tiles": []any{tile},
 			"tags":  dashboardTags,
 		},
-		Alert: map[string]any{
-			"_alert_name":   alertName,
-			"name":          alertName,
-			"message":       truncateString(message, 2000),
-			"threshold":     *threshold,
-			"thresholdType": thresholdType,
-			"interval":      nearestHDXInterval(forDuration),
-			"source":        "tile",
-			"channel": map[string]any{
-				"type":      "webhook",
-				"webhookId": webhookID,
-			},
-		},
+		Alert: alert,
 	}
 }
 

@@ -305,7 +305,15 @@ func TestValidateMigrationFetchesSourceAndTargetData(t *testing.T) {
 		case "/api/v2/status":
 			_, _ = w.Write([]byte(`{"config":{"original":"route:\n  receiver: default"}}`))
 		case "/api/v2/alerts", "/api/v2/receivers", "/api/v2/silences":
-			_, _ = w.Write([]byte(`[]`))
+			if r.URL.Path == "/api/v2/alerts" && r.Header.Get("Authorization") != "" {
+				// HyperDX Alerts
+				json.NewEncoder(w).Encode(map[string]any{
+					"data": []any{map[string]any{"name": "HighCPU"}},
+				})
+			} else {
+				// Alertmanager (alerts, receivers, silences)
+				_, _ = w.Write([]byte(`[]`))
+			}
 		case "/api/user", "/api/org":
 			_, _ = w.Write([]byte(`{"login":"admin"}`))
 		case "/api/datasources", "/api/plugins", "/api/folders", "/api/orgs":
@@ -314,10 +322,8 @@ func TestValidateMigrationFetchesSourceAndTargetData(t *testing.T) {
 			_, _ = w.Write([]byte(`[{"uid":"dash-1","title":"CPU"}]`))
 		case "/api/dashboards/uid/dash-1":
 			_, _ = w.Write([]byte(`{"dashboard":{"title":"CPU","panels":[{"title":"CPU Usage"}]},"meta":{}}`))
-		case "/api/api/v2/dashboards":
+		case "/api/v2/dashboards":
 			_, _ = w.Write([]byte(`[{"id":"dash-123","name":"CPU","tiles":[{"id":"tile-1"}]}]`))
-		case "/api/api/v2/alerts":
-			_, _ = w.Write([]byte(`[{"name":"HighCPU"}]`))
 		default:
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}

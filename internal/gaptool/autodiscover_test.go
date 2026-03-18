@@ -68,7 +68,7 @@ func TestResolveMetricSourceIDPassthrough(t *testing.T) {
 func TestResolveMetricSourceIDAutoDiscovers(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/sources" {
+		if r.URL.Path == "/api/sources" {
 			_, _ = w.Write([]byte(`[{"_id":"src-abc","name":"Metrics"}]`))
 			return
 		}
@@ -89,7 +89,7 @@ func TestResolveMetricSourceIDAutoDiscovers(t *testing.T) {
 func TestResolveMetricSourceIDErrorsWhenNoneExist(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/sources" {
+		if r.URL.Path == "/api/sources" {
 			_, _ = w.Write([]byte(`[]`))
 			return
 		}
@@ -110,7 +110,7 @@ func TestResolveMetricSourceIDErrorsWhenNoneExist(t *testing.T) {
 func TestResolveMetricSourceIDWarnsOnMultiple(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/sources" {
+		if r.URL.Path == "/api/sources" {
 			_, _ = w.Write([]byte(`[{"_id":"src-first"},{"_id":"src-second"}]`))
 			return
 		}
@@ -150,7 +150,7 @@ func TestResolveWebhookIDPassthrough(t *testing.T) {
 func TestResolveWebhookIDAutoDiscovers(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/webhooks" {
+		if r.URL.Path == "/api/webhooks" {
 			_, _ = w.Write([]byte(`[{"_id":"wh-123","name":"Slack"}]`))
 			return
 		}
@@ -171,7 +171,7 @@ func TestResolveWebhookIDAutoDiscovers(t *testing.T) {
 func TestResolveWebhookIDReturnsEmptyWhenNoneExist(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/webhooks" {
+		if r.URL.Path == "/api/webhooks" {
 			_, _ = w.Write([]byte(`[]`))
 			return
 		}
@@ -194,7 +194,7 @@ func TestResolveWebhookIDReturnsEmptyWhenNoneExist(t *testing.T) {
 func TestRunConvertGrafanaAutoDiscoversSouceID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/api/v2/sources" {
+		if r.URL.Path == "/api/sources" {
 			_, _ = w.Write([]byte(`[{"_id":"auto-src"}]`))
 			return
 		}
@@ -224,9 +224,9 @@ func TestRunConvertAlertsAutoDiscoversIDs(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/api/api/v2/sources":
+		case "/api/sources":
 			_, _ = w.Write([]byte(`[{"_id":"auto-src"}]`))
-		case "/api/api/v2/webhooks":
+		case "/api/webhooks":
 			_, _ = w.Write([]byte(`[{"_id":"auto-wh"}]`))
 		default:
 			t.Errorf("unexpected path: %s", r.URL.Path)

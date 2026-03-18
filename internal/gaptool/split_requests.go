@@ -24,7 +24,6 @@ type convertAlertsRequest struct {
 	HyperDXAPIKey string `json:"hyperdx_api_key"`
 }
 
-
 type applyAlertsRequest struct {
 	HyperDXURL    string      `json:"hyperdx_url"`
 	HyperDXAPIKey string      `json:"hyperdx_api_key"`

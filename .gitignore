@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+
+gap
+gap.exe
+
+coverage
+coverage.out
+coverage_report*.txt
+test_output.txt

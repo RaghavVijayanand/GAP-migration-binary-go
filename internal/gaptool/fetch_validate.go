@@ -126,6 +126,9 @@ func fetchJSON(client *http.Client, rawURL string, headers map[string]string) (a
 
 	var payload any
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		if err == io.EOF {
+			return map[string]any{}, nil
+		}
 		return nil, err
 	}
 	return payload, nil
@@ -289,6 +292,13 @@ func extractAlertmanager(client *http.Client, baseURL string) (map[string]any, e
 	if strings.TrimSpace(baseURL) == "" {
 		return map[string]any{}, nil
 	}
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		if err == nil {
+			err = fmt.Errorf("invalid Alertmanager URL")
+		}
+		return nil, err
+	}
 
 	base := strings.TrimRight(baseURL, "/")
 	result := map[string]any{}
@@ -329,6 +339,9 @@ func extractAlertmanager(client *http.Client, baseURL string) (map[string]any, e
 	}
 
 	wg.Wait()
+	if len(result) == 0 {
+		return map[string]any{}, nil
+	}
 	fmt.Fprintf(os.Stderr, "[Alertmanager] fetched %d resource types\n", len(result))
 	return result, nil
 }

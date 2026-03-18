@@ -62,9 +62,31 @@ func listItems(value any) []map[string]any {
 	if items := toMapSlice(value); len(items) > 0 {
 		return items
 	}
+	if rawItems := asSlice(value); len(rawItems) > 0 {
+		items := make([]map[string]any, 0, len(rawItems))
+		for _, item := range rawItems {
+			if mapped := asMap(item); len(mapped) > 0 {
+				items = append(items, mapped)
+				continue
+			}
+			items = append(items, map[string]any{"value": item})
+		}
+		return items
+	}
 	mapped := asMap(value)
 	for _, key := range []string{"data", "results", "items"} {
 		if items := toMapSlice(mapped[key]); len(items) > 0 {
+			return items
+		}
+		if rawItems := asSlice(mapped[key]); len(rawItems) > 0 {
+			items := make([]map[string]any, 0, len(rawItems))
+			for _, item := range rawItems {
+				if mappedItem := asMap(item); len(mappedItem) > 0 {
+					items = append(items, mappedItem)
+					continue
+				}
+				items = append(items, map[string]any{"value": item})
+			}
 			return items
 		}
 	}

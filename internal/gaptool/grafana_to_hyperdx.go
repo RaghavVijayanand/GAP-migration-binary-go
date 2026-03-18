@@ -181,6 +181,26 @@ func panelToTile(panel map[string]any, sourceID string, tileIndex int) map[strin
 
 	targets := toMapSlice(panel["targets"])
 	if len(targets) == 0 {
+		if _, knownType := panelTypeMap[panelType]; !knownType {
+			return map[string]any{
+				"name": title,
+				"x":    x,
+				"y":    y,
+				"w":    w,
+				"h":    h,
+				"series": []any{map[string]any{
+					"type":           "time",
+					"sourceId":       sourceID,
+					"aggFn":          "count",
+					"where":          "",
+					"whereLanguage":  "sql",
+					"groupBy":        []any{},
+					"metricName":     "metric.value",
+					"metricDataType": "gauge",
+					"displayType":    displayType,
+				}},
+			}
+		}
 		return map[string]any{
 			"name": title,
 			"x":    x,
@@ -221,6 +241,7 @@ func panelToTile(panel map[string]any, sourceID string, tileIndex int) map[strin
 			"groupBy":        []any{},
 			"metricName":     "metric.value",
 			"metricDataType": "gauge",
+			"displayType":    displayType,
 		}}
 	}
 

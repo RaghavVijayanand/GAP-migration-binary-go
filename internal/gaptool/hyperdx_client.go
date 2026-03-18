@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type hyperDXClient struct {
@@ -25,7 +26,7 @@ func newHyperDXClient(baseURL, apiKey string) (*hyperDXClient, error) {
 		return nil, fmt.Errorf("hyperdx API key is required")
 	}
 	return &hyperDXClient{
-		baseURL: trimmedURL + "/api/api/v2",
+		baseURL: trimmedURL + "/api",
 		apiKey:  trimmedAPIKey,
 		client:  newHTTPClient(),
 	}, nil
@@ -49,21 +50,53 @@ func (c *hyperDXClient) requestJSON(method, path string, payload any) (any, erro
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", hyperDXAuthorizationHeader(c.apiKey))
+	req.Header.Set("X-API-Key", c.apiKey)
 	req.Header.Set("Accept", "application/json")
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
+	var resp *http.Response
+	maxRetries := 3
+	backoffMs := 1000
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		resp, err = c.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		// Success or unrecoverable error
+		if resp.StatusCode != http.StatusTooManyRequests && resp.StatusCode != http.StatusServiceUnavailable {
+			break
+		}
+
+		// Rate limited or temporarily unavailable — close body and retry
+		resp.Body.Close()
+
+		if attempt == maxRetries {
+			return nil, fmt.Errorf("request to %s failed with status %d after %d retries", path, resp.StatusCode, maxRetries)
+		}
+
+		time.Sleep(time.Duration(backoffMs) * time.Millisecond)
+		backoffMs *= 2
+
+		// Need to reset the body reader if we have a payload
+		if payload != nil {
+			var marshalErr error
+			encoded, marshalErr := json.Marshal(payload)
+			if marshalErr != nil {
+				return nil, marshalErr
+			}
+			req.Body = io.NopCloser(bytes.NewReader(encoded))
+		}
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	responseBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, readErr
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -79,14 +112,14 @@ func (c *hyperDXClient) requestJSON(method, path string, payload any) (any, erro
 	}
 
 	var decoded any
-	if err := json.Unmarshal(responseBody, &decoded); err != nil {
-		return nil, err
+	if unmarshalErr := json.Unmarshal(responseBody, &decoded); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 	return decoded, nil
 }
 
 func (c *hyperDXClient) listDashboards() ([]map[string]any, error) {
-	decoded, err := c.requestJSON(http.MethodGet, "/dashboards", nil)
+	decoded, err := c.requestJSON(http.MethodGet, "/v2/dashboards", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +127,7 @@ func (c *hyperDXClient) listDashboards() ([]map[string]any, error) {
 }
 
 func (c *hyperDXClient) getDashboard(id string) (map[string]any, error) {
-	decoded, err := c.requestJSON(http.MethodGet, "/dashboards/"+id, nil)
+	decoded, err := c.requestJSON(http.MethodGet, "/v2/dashboards/"+id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +135,7 @@ func (c *hyperDXClient) getDashboard(id string) (map[string]any, error) {
 }
 
 func (c *hyperDXClient) createDashboard(payload map[string]any) (map[string]any, error) {
-	decoded, err := c.requestJSON(http.MethodPost, "/dashboards", payload)
+	decoded, err := c.requestJSON(http.MethodPost, "/v2/dashboards", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +143,7 @@ func (c *hyperDXClient) createDashboard(payload map[string]any) (map[string]any,
 }
 
 func (c *hyperDXClient) listAlerts() ([]map[string]any, error) {
-	decoded, err := c.requestJSON(http.MethodGet, "/alerts", nil)
+	decoded, err := c.requestJSON(http.MethodGet, "/v2/alerts", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +151,7 @@ func (c *hyperDXClient) listAlerts() ([]map[string]any, error) {
 }
 
 func (c *hyperDXClient) createAlert(payload map[string]any) (map[string]any, error) {
-	decoded, err := c.requestJSON(http.MethodPost, "/alerts", payload)
+	decoded, err := c.requestJSON(http.MethodPost, "/v2/alerts", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -139,4 +172,12 @@ func (c *hyperDXClient) listWebhooks() ([]map[string]any, error) {
 		return nil, err
 	}
 	return listItems(decoded), nil
+}
+
+func hyperDXAuthorizationHeader(apiKey string) string {
+	trimmed := strings.TrimSpace(apiKey)
+	if strings.HasPrefix(strings.ToLower(trimmed), "bearer ") {
+		return trimmed
+	}
+	return "Bearer " + trimmed
 }
